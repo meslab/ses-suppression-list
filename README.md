@@ -1,10 +1,10 @@
-# Security web site scanner
+# Exports aws SES supression list
 
 
 ## Installation 
 
 Linux:
 ```bash
-git clone https://github.com/meslab/messcanner.git
-cd messcanner/
+git clone https://github.com/meslab/ses-suppression-list.git
+cd ses-suppression-list/
 make install
