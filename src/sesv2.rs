@@ -19,7 +19,7 @@ pub async fn initialize_client(region: &str, profile: &str) -> Client {
 
 pub async fn get_suppression_list(
     sesv2_client: &Client,
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+) -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
     let mut sesv2_addresses_stream = sesv2_client
         .list_suppressed_destinations()
         .page_size(1000)
@@ -34,7 +34,8 @@ pub async fn get_suppression_list(
         for address in addresses.unwrap().suppressed_destination_summaries() {
             debug!("Address: {:?}", address);
             let email = address.email_address().to_string();
-            emails.push(email);
+            let reason = address.reason().to_string();
+            emails.push((email, reason));
         }
         thread::sleep(time::Duration::from_millis(1000));
     }
