@@ -19,7 +19,8 @@ pub async fn initialize_client(region: &str, profile: &str) -> Client {
 
 pub async fn get_suppression_list(
     sesv2_client: &Client,
-) -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
+    last_count_days: Option<u32>,
+) -> Result<Vec<(String, String, String)>, Box<dyn std::error::Error>> {
     let mut sesv2_addresses_stream = sesv2_client
         .list_suppressed_destinations()
         .page_size(1000)
@@ -29,13 +30,39 @@ pub async fn get_suppression_list(
     let mut emails = Vec::new();
 
     while let Some(addresses) = sesv2_addresses_stream.next().await {
-        info!("Addresses: {:?}", addresses);
+        debug!("Addresses: {:?}", addresses);
 
         for address in addresses.unwrap().suppressed_destination_summaries() {
             debug!("Address: {:?}", address);
-            let email = address.email_address().to_string();
-            let reason = address.reason().to_string();
-            emails.push((email, reason));
+            let now = chrono::Utc::now().naive_utc();
+            let date = address.last_update_time().to_string();
+            match last_count_days {
+                None => {
+                    let email = address.email_address().to_string();
+                    let reason = address.reason().to_string();
+                    emails.push((email, reason, date));
+                }
+                Some(last) => {
+                    info!("Date: {:?}", date);
+                    let time_date =
+                        match chrono::NaiveDateTime::parse_from_str(&date, "%Y-%m-%dT%H:%M:%S.%fZ")
+                        {
+                            Ok(time) => time,
+                            Err(_) => {
+                                chrono::NaiveDateTime::parse_from_str(&date, "%Y-%m-%dT%H:%M:%SZ")?
+                            }
+                        };
+
+                    let duration = now - time_date;
+                    if duration.num_days() < last as i64 {
+                        info!("Duration: {:?}", duration.num_days());
+                        let email = address.email_address().to_string();
+                        let reason = address.reason().to_string();
+                        info!("Email: {}", &email);
+                        emails.push((email, reason, date));
+                    }
+                }
+            }
         }
         thread::sleep(time::Duration::from_millis(1000));
     }

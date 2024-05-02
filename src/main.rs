@@ -20,6 +20,9 @@ struct Args {
 
     #[clap(short, long, default_value = "default")]
     profile: String,
+
+    #[clap(short, long, default_value = None)]
+    last: Option<u32>,
 }
 
 #[tokio::main]
@@ -30,12 +33,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let sesv2_client = sesv2::initialize_client(&args.region, &args.profile).await;
 
-    if let Ok(r) = sesv2::get_suppression_list(&sesv2_client).await {
+    if let Ok(r) = sesv2::get_suppression_list(&sesv2_client, args.last).await {
         debug!("Result: {:?}", &r);
         let mut file = File::create(format!("./{}", &args.output)).unwrap();
 
-        for (email,reason) in r.iter() {
-            writeln!(file, "{},{}", email, reason).unwrap();
+        for (email, reason, date) in r.iter() {
+            writeln!(file, "{},{},{}", email, reason, date).unwrap();
         }
         println!("Total {} email addresses", r.len())
     }
