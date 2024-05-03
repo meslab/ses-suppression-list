@@ -7,7 +7,7 @@ use std::io::Write;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[clap(
-    version = "v0.0.1",
+    version = "v0.2.0",
     author = "Anton Sidorov tonysidrock@gmail.com",
     about = "Exports ses suppression list"
 )]
