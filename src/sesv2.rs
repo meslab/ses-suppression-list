@@ -1,6 +1,7 @@
 use aws_config::default_provider::credentials::DefaultCredentialsChain;
 use aws_sdk_sesv2::config::Region;
 use aws_sdk_sesv2::{Client, Config};
+use chrono::DateTime;
 use log::{debug, info};
 use std::{thread, time};
 
@@ -34,32 +35,34 @@ pub async fn get_suppression_list(
 
         for address in addresses.unwrap().suppressed_destination_summaries() {
             debug!("Address: {:?}", address);
-            let now = chrono::Utc::now().naive_utc();
-            let date = address.last_update_time().to_string();
+            let now = DateTime::from(chrono::Utc::now());
+            let timestamp = address.last_update_time();
             match last_count_days {
                 None => {
-                    let email = address.email_address().to_string();
-                    let reason = address.reason().to_string();
-                    emails.push((email, reason, date));
+                    emails.push((
+                        address.email_address().to_string(),
+                        address.reason().to_string(),
+                        timestamp.to_string(),
+                    ));
                 }
                 Some(last) => {
-                    info!("Date: {:?}", date);
-                    let time_date =
-                        match chrono::NaiveDateTime::parse_from_str(&date, "%Y-%m-%dT%H:%M:%S.%fZ")
-                        {
-                            Ok(time) => time,
-                            Err(_) => {
-                                chrono::NaiveDateTime::parse_from_str(&date, "%Y-%m-%dT%H:%M:%SZ")?
-                            }
-                        };
-
+                    let time_date = match DateTime::from_timestamp(
+                        timestamp.secs(),
+                        timestamp.subsec_nanos(),
+                    ) {
+                        Some(time_date) => time_date,
+                        None => {
+                            return Err("Error parsing date".into());
+                        }
+                    };
                     let duration = now - time_date;
+                    info!("Duration: {:?}", duration.num_days());
                     if duration.num_days() < last as i64 {
-                        info!("Duration: {:?}", duration.num_days());
-                        let email = address.email_address().to_string();
-                        let reason = address.reason().to_string();
-                        info!("Email: {}", &email);
-                        emails.push((email, reason, date));
+                        emails.push((
+                            address.email_address().to_string(),
+                            address.reason().to_string(),
+                            timestamp.to_string(),
+                        ));
                     }
                 }
             }
