@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         debug!("Result: {:?}", &r);
         let mut file = File::create(format!("./{}", &args.output)).unwrap();
 
-        for (email, reason, date) in r.iter() {
+        for (email, reason, date) in &r {
             writeln!(file, "{},{},{}", email, reason, date).unwrap();
         }
         println!("Total {} email addresses", r.len())
